@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>高強度密碼產生器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2333;
+    --border: #2a3050;
+    --accent: #4f8ef7;
+    --accent2: #7c3aed;
+    --green: #22d3a5;
+    --red: #f25f5c;
+    --amber: #f4a535;
+    --text: #e8eaf6;
+    --muted: #7b82a0;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Noto Sans TC', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px 60px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  header {
+    margin-bottom: 32px;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .lock-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Password display */
+  .pw-display {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .pw-field {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-all;
+    letter-spacing: 1.5px;
+    min-height: 28px;
+    line-height: 1.6;
+  }
+
+  .pw-field .char-upper  { color: #7ee8fa; }
+  .pw-field .char-lower  { color: var(--text); }
+  .pw-field .char-digit  { color: var(--amber); }
+  .pw-field .char-special { color: var(--green); }
+
+  .pw-placeholder {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+
+  .pw-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-copy {
+    flex: 1;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 9px 16px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .btn-copy:hover { opacity: 0.88; }
+  .btn-copy.copied { background: var(--green); }
+
+  .btn-refresh {
+    width: 36px;
+    height: 36px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-refresh:hover { color: var(--text); border-color: var(--accent); }
+
+  /* Strength bar */
+  .strength-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .strength-label {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .strength-bars {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+  }
+
+  .sbar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+
+  .sbar.active { background: var(--green); }
+  .sbar.active.medium { background: var(--amber); }
+  .sbar.active.weak { background: var(--red); }
+
+  .strength-text {
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 40px;
+    color: var(--muted);
+  }
+  .strength-text.s1 { color: var(--red); }
+  .strength-text.s2 { color: var(--amber); }
+  .strength-text.s3 { color: var(--amber); }
+  .strength-text.s4 { color: var(--green); }
+
+  /* Settings card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  /* Length slider */
+  .length-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .length-val {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 42px;
+  }
+
+  .slider-wrap {
+    flex: 1;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent);
+    transition: transform 0.1s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Checkboxes */
+  .checks-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    cursor: pointer;
+    user-select: none;
+    padding: 8px 10px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .check-row:hover { background: var(--surface2); }
+  .check-row.checked { background: var(--surface2); border-color: var(--border); }
+
+  .check-row.disabled { opacity: 0.38; pointer-events: none; }
+
+  .custom-cb {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+    background: transparent;
+  }
+
+  .check-row.checked .custom-cb {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .check-label {
+    flex: 1;
+  }
+
+  .check-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .check-sample {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* mutual exclusion hint */
+  .mutex-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    padding: 7px 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent2);
+  }
+
+  .error-msg {
+    font-size: 12px;
+    color: var(--amber);
+    margin-top: 8px;
+    padding: 7px 10px;
+    background: rgba(244,165,53,0.08);
+    border-radius: 6px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+
+  /* Generate button */
+  .btn-generate {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-generate:hover { opacity: 0.9; }
+  .btn-generate:active { transform: scale(0.98); }
+
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-row">
+      <div class="lock-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <h1>高強度密碼產生器</h1>
+    </div>
+    <div class="subtitle">依條件隨機生成安全密碼，點擊即可複製</div>
+  </header>
+
+  <!-- Password display -->
+  <div class="pw-display">
+    <div class="pw-field" id="pwField">
+      <span class="pw-placeholder">按下「產生密碼」開始</span>
+    </div>
+    <div class="strength-row" id="strengthRow" style="display:none">
+      <span class="strength-label">強度</span>
+      <div class="strength-bars">
+        <div class="sbar" id="sb1"></div>
+        <div class="sbar" id="sb2"></div>
+        <div class="sbar" id="sb3"></div>
+        <div class="sbar" id="sb4"></div>
+      </div>
+      <span class="strength-text" id="strengthText"></span>
+    </div>
+    <div class="pw-actions">
+      <button class="btn-copy" id="btnCopy" onclick="copyPassword()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        複製密碼
+      </button>
+      <button class="btn-refresh" onclick="generate()" title="重新產生">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Length -->
+  <div class="card">
+    <div class="card-title">密碼長度</div>
+    <div class="length-row">
+      <div class="length-val" id="lenDisplay">16</div>
+      <div class="slider-wrap">
+        <input type="range" min="8" max="64" value="16" id="lenSlider" oninput="updateLength(this.value)">
+        <div class="range-labels"><span>8</span><span>64</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Character sets -->
+  <div class="card">
+    <div class="card-title">字元組合</div>
+    <div class="checks-grid">
+
+      <!-- Uppercase always on (informational) -->
+      <label class="check-row checked" id="rowLower">
+        <input type="checkbox" id="cbLower" checked hidden onchange="onCheck()">
+        <div class="custom-cb">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>
+        </div>
+        <div class="check-label">
+          <div class="check-name">小寫英文字母</div>
+          <div class="check-sample">a b c … x y z</div>
+        </div>
+      </label>
+
+      <label class="check-row" id="rowUpper">
+        <input type="checkbox" id="cbUpper" hidden onchange="onCheck()">
+        <div class="custom-cb" id="cbUpperVis"></div>
+        <div class="check-label">
+          <div class="check-name">大寫英文字母</div>
+          <div class="check-sample">A B C … X Y Z</div>
+        </div>
+      </label>
+
+      <label class="check-row" id="rowDigit">
+        <input type="checkbox" id="cbDigit" hidden onchange="onCheck()">
+        <div class="custom-cb" id="cbDigitVis"></div>
+        <div class="check-label">
+          <div class="check-name">數字</div>
+          <div class="check-sample">0 1 2 … 7 8 9</div>
+        </div>
+      </label>
+
+      <div>
+        <label class="check-row" id="rowSpecific">
+          <input type="checkbox" id="cbSpecific" hidden onchange="onCheck('specific')">
+          <div class="custom-cb" id="cbSpecificVis"></div>
+          <div class="check-label">
+            <div class="check-name">特定特殊符號</div>
+            <div class="check-sample" id="specificSample">#%!_&@</div>
+          </div>
+        </label>
+        <div id="specificInputWrap" style="display:none; padding: 6px 10px 4px 39px;">
+          <input type="text" id="specificInput" value="#%!_&@"
+            placeholder="輸入想使用的特殊符號，例如 #%!_&@"
+            oninput="onSpecificInput()"
+            style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-family:var(--mono); font-size:13px; padding:7px 10px; outline:none; transition:border-color 0.15s;"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='var(--border)'"
+          >
+          <div id="specificError" style="display:none; font-size:11px; color:var(--amber); margin-top:4px;">請至少輸入一個符號</div>
+        </div>
+      </div>
+
+      <label class="check-row" id="rowAll">
+        <input type="checkbox" id="cbAll" hidden onchange="onCheck('all')">
+        <div class="custom-cb" id="cbAllVis"></div>
+        <div class="check-label">
+          <div class="check-name">所有特殊符號</div>
+          <div class="check-sample">! " # $ % & ' ( ) * + , - . / : ; &lt; = &gt; ? @ [ \ ] ^ _ ` { | } ~</div>
+        </div>
+      </label>
+
+    </div>
+
+    <div class="mutex-hint">「特定特殊符號」與「所有特殊符號」互斥，僅可擇一勾選</div>
+    <div class="error-msg" id="errorMsg">⚠ 請至少勾選一個字元組合</div>
+  </div>
+
+  <button class="btn-generate" onclick="generate()">產生密碼</button>
+
+
+</div>
+
+<script>
+  const LOWER   = 'abcdefghijklmnopqrstuvwxyz';
+  const UPPER   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const DIGITS  = '0123456789';
+  let SPECIFIC = '#%!_&@';
+  const ALL_SPECIAL = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+
+  let currentPassword = '';
+
+  function updateLength(v) {
+    document.getElementById('lenDisplay').textContent = v;
+  }
+
+  function onCheck(changed) {
+    // mutual exclusion
+    if (changed === 'specific' && document.getElementById('cbSpecific').checked) {
+      document.getElementById('cbAll').checked = false;
+      updateCheckUI('cbAll', 'rowAll', false);
+    }
+    // show/hide specific input
+    const specificChecked = document.getElementById('cbSpecific').checked;
+    document.getElementById('specificInputWrap').style.display = specificChecked ? 'block' : 'none';
+    if (changed === 'all' && document.getElementById('cbAll').checked) {
+      document.getElementById('cbSpecific').checked = false;
+      updateCheckUI('cbSpecific', 'rowSpecific', false);
+    }
+
+    // update all visuals
+    ['cbLower','cbUpper','cbDigit','cbSpecific','cbAll'].forEach(id => {
+      const cb = document.getElementById(id);
+      const row = document.getElementById('row' + id.slice(2));
+      const vis = document.getElementById(id + 'Vis');
+      if (!vis) return;
+      const checked = cb.checked;
+      row.classList.toggle('checked', checked);
+      if (checked) {
+        vis.innerHTML = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>`;
+      } else {
+        vis.innerHTML = '';
+      }
+    });
+
+    // lower always checked visual
+    const lowerRow = document.getElementById('rowLower');
+    lowerRow.classList.add('checked');
+
+    hideError();
+  }
+
+  function updateCheckUI(cbId, rowId, checked) {
+    const row = document.getElementById(rowId);
+    const vis = document.getElementById(cbId + 'Vis');
+    row.classList.toggle('checked', checked);
+    vis.innerHTML = checked
+      ? `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>`
+      : '';
+  }
+
+  // make labels clickable properly
+  document.querySelectorAll('.check-row').forEach(row => {
+    row.addEventListener('click', function(e) {
+      const cb = this.querySelector('input[type=checkbox]');
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      const changed = cb.id === 'cbSpecific' ? 'specific' : cb.id === 'cbAll' ? 'all' : null;
+      onCheck(changed);
+    });
+  });
+
+  function showError() {
+    document.getElementById('errorMsg').classList.add('show');
+  }
+  function hideError() {
+    document.getElementById('errorMsg').classList.remove('show');
+  }
+
+  function buildCharset() {
+    let cs = LOWER; // always included
+    if (document.getElementById('cbUpper').checked)    cs += UPPER;
+    if (document.getElementById('cbDigit').checked)    cs += DIGITS;
+    if (document.getElementById('cbSpecific').checked) cs += SPECIFIC;
+    if (document.getElementById('cbAll').checked)      cs += ALL_SPECIAL;
+    return cs;
+  }
+
+  function getRequiredChars() {
+    const req = [pickFrom(LOWER)]; // always one lower
+    if (document.getElementById('cbUpper').checked)    req.push(pickFrom(UPPER));
+    if (document.getElementById('cbDigit').checked)    req.push(pickFrom(DIGITS));
+    if (document.getElementById('cbSpecific').checked) req.push(pickFrom(SPECIFIC));
+    if (document.getElementById('cbAll').checked)      req.push(pickFrom(ALL_SPECIAL));
+    return req;
+  }
+
+  function pickFrom(str) {
+    return str[Math.floor(Math.random() * str.length)];
+  }
+
+  function secureRandom(max) {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % max;
+  }
+
+  function onSpecificInput() {
+    const val = document.getElementById('specificInput').value;
+    // deduplicate characters
+    const unique = [...new Set(val.split(''))].join('');
+    SPECIFIC = unique;
+    document.getElementById('specificSample').textContent = unique || '（未輸入）';
+    const err = document.getElementById('specificError');
+    err.style.display = (!unique && document.getElementById('cbSpecific').checked) ? 'block' : 'none';
+  }
+
+  function generate() {
+    const len = parseInt(document.getElementById('lenSlider').value);
+    const charset = buildCharset();
+
+    // validate specific input is not empty if checked
+    if (document.getElementById('cbSpecific').checked && !SPECIFIC) {
+      document.getElementById('specificError').style.display = 'block';
+      return;
+    }
+    if (charset.length === 0) { showError(); return; }
+    hideError();
+
+    const required = getRequiredChars();
+    if (required.length > len) {
+      // shouldn't happen given min=8, but guard
+    }
+
+    // fill rest randomly
+    const rest = [];
+    for (let i = required.length; i < len; i++) {
+      rest.push(charset[secureRandom(charset.length)]);
+    }
+
+    // shuffle
+    const combined = [...required, ...rest];
+    for (let i = combined.length - 1; i > 0; i--) {
+      const j = secureRandom(i + 1);
+      [combined[i], combined[j]] = [combined[j], combined[i]];
+    }
+
+    currentPassword = combined.join('');
+    displayPassword(currentPassword);
+    updateStrength(currentPassword, charset);
+
+    // reset copy button
+    const btn = document.getElementById('btnCopy');
+    btn.classList.remove('copied');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>複製密碼`;
+  }
+
+  function charClass(c) {
+    if (UPPER.includes(c)) return 'char-upper';
+    if (LOWER.includes(c)) return 'char-lower';
+    if (DIGITS.includes(c)) return 'char-digit';
+    return 'char-special';
+  }
+
+  function displayPassword(pw) {
+    const field = document.getElementById('pwField');
+    field.innerHTML = pw.split('').map(c =>
+      `<span class="${charClass(c)}">${c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : c}</span>`
+    ).join('');
+  }
+
+  function updateStrength(pw, charset) {
+    const len = pw.length;
+    const variety = charset.length;
+    const entropy = Math.log2(Math.pow(variety, len));
+
+    let level = 0;
+    let label = '';
+    if (entropy < 40)      { level = 1; label = '弱'; }
+    else if (entropy < 60) { level = 2; label = '普通'; }
+    else if (entropy < 80) { level = 3; label = '強'; }
+    else                   { level = 4; label = '極強'; }
+
+    document.getElementById('strengthRow').style.display = 'flex';
+    const texts = ['','s1','s2','s3','s4'];
+    const st = document.getElementById('strengthText');
+    st.textContent = label;
+    st.className = 'strength-text ' + texts[level];
+
+    for (let i = 1; i <= 4; i++) {
+      const sb = document.getElementById('sb' + i);
+      sb.className = 'sbar';
+      if (i <= level) {
+        sb.classList.add('active');
+        if (level === 1) sb.classList.add('weak');
+        else if (level <= 3) sb.classList.add('medium');
+      }
+    }
+  }
+
+  function copyPassword() {
+    if (!currentPassword) return;
+    navigator.clipboard.writeText(currentPassword).then(() => {
+      const btn = document.getElementById('btnCopy');
+      btn.classList.add('copied');
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>已複製`;
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>複製密碼`;
+      }, 2000);
+    });
+  }
+
+
+  // init checkbox visual state
+  onCheck();
+</script>
+</body>
+</html>
